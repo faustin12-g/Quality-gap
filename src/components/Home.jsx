@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import IM from "../assets/IM.jpeg";
+import IM from "../assets/head.webp";
 import Button from "./Button";
 import Section from "./Section";
 

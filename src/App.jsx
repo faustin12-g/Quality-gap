@@ -4,6 +4,7 @@ import Home from './components/Home'
 import ChatBox from './components/ChatBox'
 import PrivacyPopup from './components/PrivacyPopup'
 import Benefits from './components/Benefits'
+import About from './components/About'
 
 
 
@@ -16,6 +17,7 @@ const App = () => {
         <Header/>
         <Home />
         <Benefits />
+        <About />
         <Footer />
         <ChatBox />
         <PrivacyPopup />
