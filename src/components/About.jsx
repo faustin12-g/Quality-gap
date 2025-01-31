@@ -8,7 +8,7 @@ const About = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto my-8 p-4 border rounded-2xl shadow-lg bg-white">
+    <div className="max-w-4xl lg:max-w-6xl mx-auto my-8 p-4 transition rounded-2xl shadow-lg bg-white">
       <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">About QualityGap</h1>
 
       {/* Mission and Vision */}
