@@ -77,14 +77,14 @@ const Header = () => {
 
         {/* Join Request & Sign In */}
         <a
-          href="#signup"
+          href="/placeholder.html"
           className="button hidden mr-8 text-black/50 transition-colors hover:text-black lg:block"
         >
           Join Request
         </a>
         <Button
           className="hidden lg: bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
-          href="#login"
+          href="/placeholder.html"
         >
           Sign in
         </Button>
