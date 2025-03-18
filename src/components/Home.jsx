@@ -20,7 +20,7 @@ const Home = () => {
       >
         <div className="container relative">
           <div className="relative mt-20 z-1 max-w-[62rem] mx-auto text-center mb-[4rem] md:mb-20 lg:mb:[7rem]">
-            <h1 className="text-4xl font-bold">Empower Your School with QualityGap</h1>
+            <h1 className="text-4xl font-bold">Empower Your School with Nexus</h1>
             <p className="mt-4 text-lg">
               Simplify school operations, enhance communication, and ensure quality
               education for everyone.

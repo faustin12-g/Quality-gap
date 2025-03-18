@@ -46,7 +46,7 @@ const Header = () => {
       <div className="flex items-center px-5 lg:px-7.5 xl:px-10 max-lg:py-4">
         {/* Logo */}
         <a className="block w-[12rem] xl:mr-8" href="#hero">
-          <img src={LOGO} width={190} height={20} alt="QualityGap Logo" />
+          <img src={LOGO} width={120} height={5} alt="QualityGap Logo" />
         </a>
 
         {/* Navigation */}
