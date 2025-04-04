@@ -77,16 +77,17 @@ const Header = () => {
 
         {/* Join Request & Sign In */}
         <a
-          href="/placeholder.html"
+          href="/login"
           className="button hidden mr-8 text-black/50 transition-colors hover:text-black lg:block"
         >
-          Join Request
+          SignIn
         </a>
+
         <Button
           className="hidden lg: bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
-          href="/placeholder.html"
+          href="/register"
         >
-          Sign in
+          Register
         </Button>
 
         {/* Language Dropdown */}
