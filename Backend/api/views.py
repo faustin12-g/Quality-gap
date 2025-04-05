@@ -38,17 +38,29 @@ class CreateUserView(generics.CreateAPIView):
 
 
 
-class LogingView(APIView):
-      permission_classes = [AllowAny]
-      def post(self, request, format=None):
-            email = request.data.get('email')
-            password = request.data.get('password')
-            user=authenticate(email=email, password=password)
-            if user is not None:
-                  login(request, user)
-                  return Response({'message': 'User logged in successfully'}, status=status.HTTP_200_OK)
-            else:
-                  return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+from rest_framework_simplejwt.tokens import RefreshToken
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        # Authenticate using email as username
+        user = authenticate(username=email, password=password)
+        
+        if user:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh)
+            }, status=status.HTTP_200_OK)
+        
+        return Response(
+            {'detail': 'Invalid credentials'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
 class LogoutView(APIView):
       permission_classes = [IsAuthenticated]
