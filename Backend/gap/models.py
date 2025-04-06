@@ -101,5 +101,36 @@ class Students(models.Model):
         return f"{self.firstName} {self.lastName}"
     
 
+class RequestedMembership(models.Model):
+      user=models.ForeignKey(User, on_delete=models.CASCADE)
+      phone_number=models.CharField(max_length=20)
+      school=models.ForeignKey(School, on_delete=models.CASCADE)
+      district=models.ForeignKey(District, on_delete=models.CASCADE)
+      description=models.TextField()
+      date_requested=models.DateTimeField(auto_now_add=True)
+      status=models.CharField(max_length=20, choices=[('pending', 'pending'), ('approved', 'approved'), ('rejected','rejected')], default='pending')
+
+      def __str__(self):
+            return f"{self.user.first_name} {self.user.last_name} requested for membership in {self.school.name}."
+
+    
 
 
+
+class CustomerHelp(models.Model):
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('In Progress', 'In Progress'),
+        ('Resolved', 'Resolved'),
+    ]
+    
+    name = models.CharField(max_length=100)
+    email = models.EmailField()
+    description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    replies = models.JSONField(default=list)  # Stores array of reply strings
+    
+    def __str__(self):
+        return f"Help request from {self.name} - {self.status}"

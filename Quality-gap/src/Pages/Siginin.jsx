@@ -1,11 +1,69 @@
-import React from 'react';
-import LOGO from '../assets/QG_logo.png';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import LOGO from '../assets/QG_logo.png'
+import Cookies from 'js-cookie';;
+import { Link, useNavigate } from 'react-router-dom';
 
 const SignIn = () => {
-  const handleSubmit = (e) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission logic here
+    setIsLoading(true);
+    setErrors({});
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/login/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.detail) {
+          setErrors({ general: data.detail });
+        } else if (data.non_field_errors) {
+          setErrors({ general: data.non_field_errors[0] });
+        } else {
+          setErrors({ general: 'Login failed. Please try again.' });
+        }
+        return;
+      }
+
+      // Store tokens if using JWT
+       if (data.access && data.refresh) {
+        Cookies.set('access_token', data.access, { expires: 7 }); // Set cookie to expire in 7 days
+        Cookies.set('refresh_token', data.refresh, { expires: 7 });
+        Cookies.set('username', data.username, { expires: 7 });
+      }
+
+      // Redirect to dashboard or home page
+      navigate('/');
+    } catch (err) {
+      setErrors({ general: 'Network error. Please try again.' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -29,13 +87,28 @@ const SignIn = () => {
             <h2 className="text-2xl font-bold text-white">Sign in to your account</h2>
             <p className="text-indigo-100 text-sm mt-1">
               Or{' '}
-              <a href="#" className="font-medium text-indigo-200 hover:text-white">
-                start your 14-day free trial
-              </a>
+              <Link to="/register" className="font-medium text-indigo-200 hover:text-white">
+                register for a new account
+              </Link>
             </p>
           </div>
           
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            {errors.general && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{errors.general}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email address
@@ -44,6 +117,8 @@ const SignIn = () => {
                 id="email"
                 name="email"
                 type="email"
+                value={formData.email}
+                onChange={handleChange}
                 autoComplete="email"
                 required
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -59,6 +134,8 @@ const SignIn = () => {
                 id="password"
                 name="password"
                 type="password"
+                value={formData.password}
+                onChange={handleChange}
                 autoComplete="current-password"
                 required
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -80,24 +157,33 @@ const SignIn = () => {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-indigo-600 hover:underline">
+                <Link to="/forgot-password" className="font-medium text-indigo-600 hover:underline">
                   Forgot your password?
-                </a>
+                </Link>
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              disabled={isLoading}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Sign in
+              {isLoading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Signing in...
+                </span>
+              ) : 'Sign in'}
             </button>
 
             <div className="text-center text-sm text-gray-600">
               Don't have an account?{' '}
-              <a href="/register" className="font-medium text-indigo-600 hover:underline">
+              <Link to="/register" className="font-medium text-indigo-600 hover:underline">
                 Sign up
-              </a>
+              </Link>
             </div>
           </form>
         </div>

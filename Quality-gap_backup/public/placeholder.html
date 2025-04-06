@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page under Construction</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      margin: 0;
+      background-color: yellow;
+      overflow: auto; /* Allow scrolling */
+    }
+    .countdown {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .countdown div {
+      background-color: black;
+      color: white;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      text-align: center;
+      min-width: 5rem;
+    }
+    @media (max-width: 740px) {
+      .countdown div {
+        padding: 0.5rem;
+        min-width: 3rem;
+      }
+    }
+    .illustration img {
+      max-width: 100%;
+      height: auto;
+    }
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body class="bg-yellow-400 min-h-screen flex flex-col items-center justify-center text-center p-4">
+  <canvas id="fireworksCanvas"></canvas>
+  <div class="fade-in max-w-screen-lg w-full">
+    <h2 class="text-4xl md:text-6xl font-extrabold text-black mb-4">
+      This product is
+    </h2>
+    <div class="illustration items-center flex justify-center text-center">
+      <img src="https://www.fg-a.com/under-construction/under-construction-night.gif" alt="Under Construction Illustration" class="rounded-t-full rounded-b-xl">
+    </div>
+    <p class="text-lg md:text-xl text-black mt-4 px-4">
+      Our team is working tirelessly behind the scenes to craft something truly extraordinary just for you. 🚀
+    </p>
+    <p class="text-lg md:text-xl text-black px-4">
+      We’re building an amazing product that will not only meet your expectations but surpass them. Your excitement keeps us inspired, and we can't wait to share it with you!
+    </p>
+    <p class="text-xl md:text-2xl text-black font-bold mt-6">
+      ✨ Thank you for your patience and support. Stay tuned! 🎇
+    </p>
+    <div class="countdown">
+      <div>
+        <div id="months" class="text-3xl md:text-4xl font-bold">0</div>
+        <div class="text-md md:text-lg">Months</div>
+      </div>
+      <div>
+        <div id="days" class="text-3xl md:text-4xl font-bold">0</div>
+        <div class="text-md md:text-lg">Days</div>
+      </div>
+      <div>
+        <div id="hours" class="text-3xl md:text-4xl font-bold">0</div>
+        <div class="text-md md:text-lg">Hours</div>
+      </div>
+      <div>
+        <div id="minutes" class="text-3xl md:text-4xl font-bold">0</div>
+        <div class="text-md md:text-lg">Minutes</div>
+      </div>
+      <div>
+        <div id="seconds" class="text-3xl md:text-4xl font-bold">0</div>
+        <div class="text-md md:text-lg">Seconds</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Countdown Timer Logic
+    const targetDate = new Date("December 31, 2025 23:59:59").getTime();
+
+    function updateCountdown() {
+      const now = new Date().getTime();
+      const distance = targetDate - now;
+
+      if (distance > 0) {
+        const months = Math.floor(distance / (1000 * 60 * 60 * 24 * 30));
+        const days = Math.floor((distance % (1000 * 60 * 60 * 24 * 30)) / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        document.getElementById("months").textContent = months;
+        document.getElementById("days").textContent = days;
+        document.getElementById("hours").textContent = hours;
+        document.getElementById("minutes").textContent = minutes;
+        document.getElementById("seconds").textContent = seconds;
+        
+      } else {
+        clearInterval(countdownInterval);
+        document.querySelector(".countdown").innerHTML = "<div>Time's up!</div>";
+      }
+    }
+
+    const countdownInterval = setInterval(updateCountdown, 1000);
+    updateCountdown(); // Call immediately
+
+    // Fireworks Effect
+    const canvas = document.getElementById("fireworksCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let fireworks = [];
+
+    class Firework {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.explosion = [];
+        for (let i = 0; i < 100; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = Math.random() * 5 + 2;
+          this.explosion.push({ x: this.x, y: this.y, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, alpha: 1 });
+        }
+      }
+
+      draw() {
+        this.explosion.forEach((particle) => {
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, 5, 0, Math.PI * 5);
+          ctx.fillStyle = `rgba(100, ${Math.random() * 255}, 127, ${particle.alpha})`;
+          ctx.fill();
+          particle.x += particle.dx;
+          particle.y += particle.dy;
+          particle.alpha -= 0.002;
+        });
+        this.explosion = this.explosion.filter((p) => p.alpha > 0);
+      }
+    }
+
+    function createFirework() {
+      const x = Math.random() * canvas.width;
+      const y = Math.random() * canvas.height / 2;
+      fireworks.push(new Firework(x, y));
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      fireworks.forEach((fw, index) => {
+        fw.draw();
+        if (fw.explosion.length === 0) fireworks.splice(index, 1);
+      });
+      requestAnimationFrame(animate);
+    }
+
+    setInterval(createFirework, 500); // Launch fireworks every 500ms
+    animate();
+
+    // Resize canvas on window resize
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+  </script>
+</body>
+</html>

@@ -1,10 +1,11 @@
 import LOGO from '../assets/QG_logo.png';
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
+import Cookies from 'js-cookie'; 
 import { navigation } from "../constants";
 import { disablePageScroll, enablePageScroll } from "scroll-lock";
 import Button from "./Button";
 import MenuSvg from '../assets/svg/MenuSvg';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Globe2 } from 'lucide-react'; // Icon for translate button
 
 const Header = () => {
@@ -12,6 +13,19 @@ const Header = () => {
   const [openNavigation, setOpenNavigation] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState("en");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    // Check if access token exists in cookies
+    const accessToken = Cookies.get('access_token');
+    if (accessToken) {
+      // Retrieve username from cookies
+      const user = Cookies.get('username') || "User";
+      setIsLoggedIn(true);
+      setUsername(user);
+    }
+  }, []);
 
   const toggleNavigation = () => {
     if (openNavigation) {
@@ -35,6 +49,15 @@ const Header = () => {
     setDropdownOpen(false); // Close dropdown after selection
     // Integrate Google Translate or your language switching logic here
     console.log(`Language changed to: ${language}`);
+  };
+
+
+  const handleLogout = () => {
+    Cookies.remove('access_token');
+    Cookies.remove('username');
+    setIsLoggedIn(false);
+    setUsername('');
+    
   };
 
   return (
@@ -75,20 +98,40 @@ const Header = () => {
           </div>
         </nav>
 
-        {/* Join Request & Sign In */}
-        <a
-          href="/login"
-          className="button hidden mr-8 text-black/50 transition-colors hover:text-black lg:block"
-        >
-          SignIn
-        </a>
+        {/* Sign In / Register or Welcome User */}
+        {isLoggedIn ? (
+           <div className="flex items-center space-x-4">
+            <Button
+              className="hidden mr-8 bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
+              href="/request"
+            >
+              More info
+            </Button>
+           <span className="text-black font-semibold">Welcome, {username}</span>
+           <Button
+             className="hidden lg: bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
+             onClick={handleLogout}
+           >
+             Logout
+           </Button>
+         </div>
+        ) : (
+          <div className="flex items-center space-x-4">
+            <a
+              href="/login"
+              className="button hidden mr-8 text-black/50 transition-colors hover:text-black lg:block"
+            >
+              SignIn
+            </a>
 
-        <Button
-          className="hidden lg: bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
-          href="/register"
-        >
-          Register
-        </Button>
+            <Button
+              className="hidden lg: bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
+              href="/register"
+            >
+              Register
+            </Button>
+          </div>
+        )}
 
         {/* Language Dropdown */}
         <div className="relative ml-4">

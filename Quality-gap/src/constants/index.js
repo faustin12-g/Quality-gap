@@ -2,27 +2,27 @@ export const navigation = [
     {
       id: "0",
       title: "Home",
-      url: "#home",
+      url: "/",
     },
     {
       id: "1",
       title: "About",
-      url: "#about",
+      url: "/main",
     },
     {
       id: "2",
       title: "pricing",
-      url: "#pricing",
+      url: "/pricing",
     },
     {
       id: "3",
       title: "contact Us",
-      url: "#contact",
+      url: "",
     },
     {
       id: "4",
       title: "Help/Support",
-      url: "#Help",
+      url: "/helpcenter",
     },
     {
       id: "5",
