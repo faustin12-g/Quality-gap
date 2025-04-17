@@ -1,3 +1,4 @@
+from pyexpat import model
 from django.db import models
 from  django.contrib.auth.models import AbstractUser
 from django.db.models.signals import pre_save
@@ -150,3 +151,61 @@ class CustomerHelp(models.Model):
     
     def __str__(self):
         return f"Help request from {self.name} - {self.status}"
+    
+
+
+
+
+class Class(models.Model):
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)  # e.g., "Grade 6", "S1"
+    year = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.name} - {self.school.name}"
+
+class Subject(models.Model):
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=10)
+
+    def __str__(self):
+        return self.name
+
+class Teacher(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    subjects = models.ManyToManyField(Subject)
+
+    def __str__(self):
+        return self.user.get_full_name()
+
+class Lesson(models.Model):
+    school_class = models.ForeignKey(Class, on_delete=models.CASCADE)
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True)
+    day = models.CharField(max_length=10, choices=[
+        ("Monday", "Monday"),
+        ("Tuesday", "Tuesday"),
+        ("Wednesday", "Wednesday"),
+        ("Thursday", "Thursday"),
+        ("Friday", "Friday"),
+        ("Saturday", "Saturday")
+    ])
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="lessons_created")
+
+    class Meta:
+        unique_together = ('school_class', 'day', 'start_time')
+
+    def __str__(self):
+        return f"{self.subject.name} - {self.school_class.name} on {self.day}"
+
+    
+    
+
+
+
+    
+            
+        

@@ -31,6 +31,9 @@ const Topbar = () => {
   return (
     <header className="bg-blue-300 text-white p-4 shadow flex justify-between items-center sticky top-0 z-50">
       <h1 className="text-lg font-bold">Nexius powered school management system</h1>
+      <button>
+        <a href="/">Go to site</a>
+      </button>
       {currentUser ? (
         <div className="flex items-center space-x-4">
           <span className="hidden md:block">{currentUser.username}</span>
