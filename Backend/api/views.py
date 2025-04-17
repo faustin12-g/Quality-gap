@@ -1,3 +1,4 @@
+from datetime import timezone
 from django.core.mail import EmailMessage
 from django.shortcuts import render
 from rest_framework import status
@@ -15,7 +16,7 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import api_view, permission_classes
-from gap.models import User, School,District,Students,RequestedMembership,CustomerHelp
+from gap.models import User, School,District,Students,RequestedMembership,CustomerHelp,SchoolAccess
 from rest_framework import viewsets
 
 
@@ -92,23 +93,24 @@ class DistrictViewSet(viewsets.ModelViewSet):
 import logging
 
 logger = logging.getLogger(__name__)
-
-class SchoolViewSet(viewsets.ModelViewSet):
-    queryset = School.objects.all()
-    serializer_class = SchoolSerializer
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        district_id = self.request.query_params.get('district_id')
-        logger.debug(f"Received district_id: {district_id}")
+class SchoolListView(APIView):
+    def get(self, request):
+        district_id = request.query_params.get('district_id')
+        
         if district_id:
             try:
-                district_id_int = int(district_id)
-                # Filter using the nested relation field lookup
-                queryset = queryset.filter(district__id=district_id_int)
+                schools = School.objects.filter(district__id=int(district_id))
+                print(f"Found {schools.count()} schools for district {district_id}")
             except ValueError:
-                logger.error(f"Invalid district_id: {district_id}")
-        return queryset
+                return Response({"error": "Invalid district_id"}, status=400)
+        else:
+            schools = School.objects.all()
+            
+        serializer = SchoolSerializer(schools, many=True)
+        return Response(serializer.data)
+
+
+
 
 
 
@@ -236,5 +238,213 @@ def delete_help_request(request, pk):
             status=status.HTTP_404_NOT_FOUND
             )
     
-       
-# Create your views here.
+
+
+
+
+
+
+
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+import secrets
+
+from django.contrib.auth.hashers import make_password
+from django.db import transaction
+
+@api_view(['POST'])
+def approve_membership(request):
+    request_id = request.data.get('request_id')
+    try:
+        # Log the request ID for debugging
+        print(f"Confirming membership for request ID: {request_id}")
+
+        membership_request = RequestedMembership.objects.get(id=request_id)
+
+        # Get the existing school selected by the user
+        school = School.objects.get(name=membership_request.school, district=membership_request.district)
+
+        # Mark the membership request as approved
+        membership_request.status = 'approved'
+        membership_request.save()
+
+        # ✅ Ensure SchoolAccess exists
+        try:
+            with transaction.atomic():
+                school_access, created = SchoolAccess.objects.get_or_create(
+                    user=membership_request.user,
+                    school=school,
+                )
+                if not created:
+                    print(f"SchoolAccess for user {membership_request.user.username} already exists for {school.name}")
+        except Exception as e:
+            return Response({'error': f"Error creating SchoolAccess: {str(e)}"}, status=500)
+
+        # Create email content
+        subject = f"Your School Account for {school.name} Has Been Approved"
+        message = f"""
+        Dear {membership_request.user.username},
+
+        Your request to register {school.name} has been approved!
+
+        Here is your School Code: {school.code}
+
+        Please login at: http://localhost:5173/school-passwrd?code={school.code}
+
+        You will be prompted to set your password after logging in.
+
+        If you didn't request this, please contact us immediately.
+
+        Best regards,  
+        Nexius Company Ltd Support Team
+        """
+
+        # Send email with error handling
+        try:
+            send_mail(
+                subject,
+                message.strip(),
+                'ismailgihozo@gmail.com',
+                [membership_request.user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            return Response({'error': f'Error sending email: {str(e)}'}, status=500)
+
+        return Response({
+            'success': True,
+            'school_code': school.code,
+            'message': 'Membership approved and school code sent via email'
+        })
+
+    except RequestedMembership.DoesNotExist:
+        return Response({'error': 'Request not found'}, status=404)
+    except School.DoesNotExist:
+        return Response({'error': 'Selected school does not exist'}, status=404)
+    except Exception as e:
+        # Log the full error for debugging
+        print(f"Unexpected error: {e}")
+        return Response({'error': f"Unexpected error: {str(e)}"}, status=500)
+
+
+
+
+
+
+
+
+@api_view(['POST'])
+def reject_membership(request):
+    request_id = request.data.get('request_id')
+    try:
+        membership_request = RequestedMembership.objects.get(id=request_id)
+        membership_request.status = 'rejected'
+        membership_request.save()
+
+        # Send rejection email
+        subject = f"Your School Registration Request for {membership_request.school} Was Rejected"
+        message = f"""
+        Dear {membership_request.user.username},
+
+        Unfortunately, your request to register the school "{membership_request.school}" in {membership_request.district} has been rejected.
+
+        If you believe this was a mistake or you have any questions, please contact our support team.
+
+        Best regards,  
+        Nexius Company Ltd Support Team
+        """
+
+        send_mail(
+            subject,
+            message.strip(),
+            'ismailgihozo@gmail.com',  # from email
+            [membership_request.user.email],  # to email
+            fail_silently=False,
+        )
+
+        return Response({'success': True, 'message': 'Membership request rejected and email sent'})
+
+    except RequestedMembership.DoesNotExist:
+        return Response({'error': 'Request not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)   
+
+
+
+
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+@api_view(['POST'])
+def set_school_password(request):
+    school_code = request.data.get('school_code')
+    password = request.data.get('password')
+
+    if not all([school_code, password]):
+        return Response({'error': 'Missing required fields'}, status=400)
+
+    try:
+        # Get the SchoolAccess object based on school_code
+        access = SchoolAccess.objects.get(school__code=school_code)
+
+        # Set the new password for the user associated with the school access
+        access.set_password(password)
+        access.save()
+
+        return Response({'message': 'Password set successfully'})
+    except SchoolAccess.DoesNotExist:
+        return Response({'error': 'School access not found for this user'}, status=404)
+
+
+
+
+
+
+@api_view(['POST'])
+def school_login(request):
+    school_code = request.data.get('school_code')
+    password = request.data.get('password')
+
+    if not school_code or not password:
+        return Response({'error': 'School code and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Get the school by school_code
+        school = School.objects.get(code=school_code)
+
+        # Check if a user has access to this school
+        access = SchoolAccess.objects.get(school=school)
+
+        # Authenticate using the user's school password
+        if not access.check_password(password):
+            return Response({'error': 'Invalid school password'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Generate JWT token (if needed for further API calls)
+        user = access.user
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        school_data = {
+            'name': school.name,
+            'code': school.code,
+            'district': school.district.name,
+        }
+
+        return Response({
+            'success': True,
+            'token': access_token,
+            'school': school_data,
+            'user': {
+                'username': user.username,
+                'email': user.email,
+            },
+        })
+
+    except School.DoesNotExist:
+        return Response({'error': 'Invalid school code'}, status=status.HTTP_404_NOT_FOUND)
+    except SchoolAccess.DoesNotExist:
+        return Response({'error': 'No access found for this school'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

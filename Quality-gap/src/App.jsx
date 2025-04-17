@@ -24,6 +24,19 @@ import Support from './Pages/Admin/Support';
 import Help from './Pages/Help';
 import Pricing from './Pages/Pricing';
 import About from './Pages/About';
+import Timetable from './Pages/Schools/Timetable';
+import Departments from './Pages/Schools/Departments';
+import Ordinarylevel from './Pages/Schools/Class/Ordinarylevel';
+import AdvancedLeve from './Pages/Schools/Class/AdvancedLeve';
+import Studentsperformance from './Pages/Schools/Students/Studentsperformance';
+import Headtecher from './Pages/Schools/Deparments/Headtecher';
+import DirectorOfstudie from './Pages/Schools/Deparments/DirectorOfstudie';
+import DirectOfDescripline from './Pages/Schools/Deparments/DirectOfDescripline';
+import Library from './Pages/Schools/Deparments/Library';
+import Finance from './Pages/Schools/Deparments/Finance';
+import SchoolLogin from './components/SchoolLogin ';
+import SetSchoolPassword from './components/Setschoolpassword';
+
 
 const App = () => {
   return (
@@ -37,6 +50,8 @@ const App = () => {
         <Route path='/helpcenter' element={<Help/>}/>
         <Route path="/pricing" element={<Pricing/>}/>
         <Route path='/main' element={<About/>}/>
+        <Route path='/school-login' element={<SchoolLogin/>}/>
+        <Route path='/school-passwrd' element={<SetSchoolPassword/>}/>
 
         {/* Customer Support / Admin Dashboard Routes */}
         <Route path="/customer" element={<Customersupportsidebar />}>
@@ -51,8 +66,19 @@ const App = () => {
           <Route path="students" element={<Students />} />
           <Route path="teachers" element={<Teachers />} />
           <Route path="classes" element={<Classes />} />
+          <Route path="classes/ordinary" element={<Ordinarylevel />} />
+          <Route path='classes/advanced' element={<AdvancedLeve/>}/>
           <Route path="reports" element={<Reports />} />
           <Route path="studentsinfo" element={<Studentinformation />} />
+          <Route path='students/performance' element={<Studentsperformance/>}/>
+          <Route path='timetable' element={<Timetable/>}/>
+
+          <Route path='department' element={<Departments/>}/>
+          <Route path='department/headtecher' element={<Headtecher/>}/>
+          <Route path='department/dos' element={<DirectorOfstudie/>}/>
+          <Route path='department/dod' element={<DirectOfDescripline/>}/>
+          <Route path='department/library' element={<Library/>}/>
+          <Route path='department/finance' element={<Finance/>}/>
           {/* If needed, you can add more nested routes here */}
         </Route>
       </Routes>

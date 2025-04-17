@@ -1,6 +1,6 @@
 from django.contrib import admin
-from .models import User, District, School, Parents, Students,RequestedMembership,CustomerHelp
-
+from .models import User, District, School, Parents, Students,RequestedMembership,CustomerHelp,SchoolAccess
+from django.contrib.auth.hashers import make_password,check_password
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
     list_display = ('email', 'username', 'first_name', 'last_name', 'is_active', 'is_staff', 'is_superuser')
@@ -58,5 +58,16 @@ class RequestedMembershipAdmin(admin.ModelAdmin):
 class CustomerAdminsupport(admin.ModelAdmin):
     list_display=["name","email","description"]
     list_filter=["email"]
+
+
+@admin.register(SchoolAccess)
+class SchoolAccessAdmin(admin.ModelAdmin):
+    list_display = ('user','school', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('user__email', 'user__username','school__name')
+    def set_password(self, raw_password):
+        self.school_password = make_password(raw_password)
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.school_password)
                     
 

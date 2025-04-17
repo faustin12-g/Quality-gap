@@ -1,6 +1,7 @@
 from django.db import models
 from  django.contrib.auth.models import AbstractUser
 from django.db.models.signals import pre_save
+from django.contrib.auth.hashers import make_password,check_password
 from django.dispatch import receiver
 import datetime
 # Create your models here.
@@ -66,6 +67,21 @@ class School(models.Model):
         if not self.code:
             self.code = self.generate_school_code()  # Generate the code before saving
         super().save(*args, **kwargs)
+
+
+
+
+class SchoolAccess(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    school_password = models.CharField(max_length=128)  # hashed
+    is_active = models.BooleanField(default=True)
+
+    def set_password(self, raw_password):
+        self.school_password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.school_password)
 
 
 class Parents(models.Model):

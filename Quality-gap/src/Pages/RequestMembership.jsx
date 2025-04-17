@@ -20,13 +20,15 @@ const RequestMembership = () => {
     districts: true,
     schools: false,
     profile: true,
-    submitting: false
+    submitting: false,
+    checkingRequest: true
   });
   const [submitStatus, setSubmitStatus] = useState({
     success: false,
     error: false,
     message: ''
   });
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
   const API_URL = 'http://localhost:8000/api';
 
@@ -67,6 +69,20 @@ const RequestMembership = () => {
       return Promise.reject(error);
     }
   );
+
+  // Check if user already has a pending request
+  const checkPendingRequest = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/requested_memberships/check_pending/`);
+      if (response.data.has_pending) {
+        setHasPendingRequest(true);
+      }
+    } catch (error) {
+      console.error('Error checking pending request:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, checkingRequest: false }));
+    }
+  };
 
   // Fetch current user profile
   const getCurrentUser = async () => {
@@ -123,6 +139,7 @@ const RequestMembership = () => {
   useEffect(() => {
     getCurrentUser();
     fetchDistricts();
+    checkPendingRequest();
   }, []);
 
   useEffect(() => {
@@ -145,6 +162,7 @@ const RequestMembership = () => {
         success: true,
         message: 'Membership request submitted successfully!'
       });
+      setHasPendingRequest(true);
       setFormData({
         name: profile ? `${profile.first_name} ${profile.last_name}` : '',
         email: profile?.email || '',
@@ -164,10 +182,34 @@ const RequestMembership = () => {
     }
   };
 
-  if (loading.profile) {
+  if (loading.profile || loading.checkingRequest) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl">Loading your profile...</div>
+      </div>
+    );
+  }
+
+  if (hasPendingRequest) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex flex-col items-center p-4 md:p-8">
+        <Link to="/" className="mb-8 hover:opacity-90 transition-opacity">
+          <img src={LOGO} width={200} alt="Company Logo" className="object-contain" />
+        </Link>
+
+        <div className="w-full max-w-2xl bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">Membership Request</h1>
+          <div className="bg-blue-100 text-blue-800 p-4 rounded-lg mb-6">
+            <p className="font-medium">Your membership request has already been submitted and is waiting for approval.</p>
+            <p className="mt-2">You'll be notified once your request is processed.</p>
+          </div>
+          <Link 
+            to="/" 
+            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Return to Home
+          </Link>
+        </div>
       </div>
     );
   }
@@ -226,7 +268,7 @@ const RequestMembership = () => {
               <label className="block text-sm font-medium text-gray-700">Phone Number *</label>
               <input
                 type="tel"
-                name="phone_number"  // Updated name to match state
+                name="phone_number"
                 value={formData.phone_number}
                 onChange={handleChange}
                 required
@@ -281,7 +323,7 @@ const RequestMembership = () => {
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">Why do you want to join? *</label>
             <textarea
-              name="description"  // Updated name to match state
+              name="description"
               value={formData.description}
               onChange={handleChange}
               rows={4}

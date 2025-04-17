@@ -1,12 +1,13 @@
 import LOGO from '../assets/QG_logo.png';
-import { useLocation, Link } from "react-router-dom";
-import Cookies from 'js-cookie'; 
+import { useLocation, Link, useNavigate } from "react-router-dom";
+import Cookies from 'js-cookie';
+import { FaUser } from 'react-icons/fa';
 import { navigation } from "../constants";
 import { disablePageScroll, enablePageScroll } from "scroll-lock";
 import Button from "./Button";
 import MenuSvg from '../assets/svg/MenuSvg';
 import { useState, useEffect } from "react";
-import { Globe2 } from 'lucide-react'; // Icon for translate button
+import { Globe2 } from 'lucide-react';
 
 const Header = () => {
   const pathname = useLocation();
@@ -15,12 +16,11 @@ const Header = () => {
   const [currentLanguage, setCurrentLanguage] = useState("en");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('');
+  const naviagate=useNavigate()
 
   useEffect(() => {
-    // Check if access token exists in cookies
     const accessToken = Cookies.get('access_token');
     if (accessToken) {
-      // Retrieve username from cookies
       const user = Cookies.get('username') || "User";
       setIsLoggedIn(true);
       setUsername(user);
@@ -28,36 +28,29 @@ const Header = () => {
   }, []);
 
   const toggleNavigation = () => {
-    if (openNavigation) {
-      setOpenNavigation(false);
-      enablePageScroll();
-    } else {
-      setOpenNavigation(true);
-      disablePageScroll();
-    }
+    setOpenNavigation((prev) => !prev);
+    if (openNavigation) enablePageScroll();
+    else disablePageScroll();
   };
 
   const handleClick = () => {
-    if (!openNavigation) return;
-
-    enablePageScroll();
-    setOpenNavigation(false);
+    if (openNavigation) {
+      setOpenNavigation(false);
+      enablePageScroll();
+    }
   };
 
   const handleLanguageChange = (language) => {
     setCurrentLanguage(language);
-    setDropdownOpen(false); // Close dropdown after selection
-    // Integrate Google Translate or your language switching logic here
+    setDropdownOpen(false);
     console.log(`Language changed to: ${language}`);
   };
-
 
   const handleLogout = () => {
     Cookies.remove('access_token');
     Cookies.remove('username');
     setIsLoggedIn(false);
     setUsername('');
-    
   };
 
   return (
@@ -99,39 +92,56 @@ const Header = () => {
         </nav>
 
         {/* Sign In / Register or Welcome User */}
-        {isLoggedIn ? (
-           <div className="flex items-center space-x-4">
-            <Button
-              className="hidden mr-8 bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
-              href="/request"
-            >
-              More info
-            </Button>
-           <span className="text-black font-semibold">Welcome, {username}</span>
-           <Button
-             className="hidden lg: bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
-             onClick={handleLogout}
-           >
-             Logout
-           </Button>
-         </div>
-        ) : (
-          <div className="flex items-center space-x-4">
-            <a
-              href="/login"
-              className="button hidden mr-8 text-black/50 transition-colors hover:text-black lg:block"
-            >
-              SignIn
-            </a>
+        <div className="flex items-center space-x-4">
+          {isLoggedIn ? (
+            <>
+              <Button
+                className="hidden lg:block bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
+                href="/request"
+              >
+                More info
+              </Button>
 
-            <Button
-              className="hidden lg: bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
-              href="/register"
-            >
-              Register
-            </Button>
-          </div>
-        )}
+              {/* FaUser icon with dropdown */}
+              <div className="relative group">
+                <div className="flex items-center space-x-2 cursor-pointer">
+                  <FaUser className="text-xl text-black" />
+                  <span className="text-sm font-semibold text-black hidden lg:block">
+                    Welcome, {username}
+                  </span>
+                </div>
+                <div className="absolute right-0 mt-0 hidden group-hover:block bg-black text-white shadow-md rounded-md py-2 w-32">
+                  <button className='block w-full px-4 py-2 text-sm text-white text-left hover:text-blue-400'
+                   onClick={()=>naviagate('/school-login')}
+                  >
+                    School portal
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full px-4 py-2 text-sm text-white text-left hover:text-blue-400"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <a
+                href="/login"
+                className="hidden lg:block text-black/50 transition-colors hover:text-black"
+              >
+                SignIn
+              </a>
+              <Button
+                className="hidden lg:block bg-amber-300 p-1 text-black/45 hover:text-black hover:bg-amber-200 rounded-md"
+                href="/register"
+              >
+                Register
+              </Button>
+            </>
+          )}
+        </div>
 
         {/* Language Dropdown */}
         <div className="relative ml-4">
@@ -150,7 +160,7 @@ const Header = () => {
           </button>
           {dropdownOpen && (
             <div
-              className="absolute right-0 mt-2 p-2 bg-white shadow-md rounded-md"
+              className="absolute right-0 mt-2 p-2 bg-white shadow-md rounded-md z-50"
               onMouseLeave={() => setDropdownOpen(false)}
             >
               <button

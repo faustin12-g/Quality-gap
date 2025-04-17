@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import LOGO from '../assets/QG_logo.png';
 
 const Register = () => {
@@ -15,6 +15,7 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const navigate = useNavigate();
 
   const validateForm = () => {
     const newErrors = {};
@@ -118,20 +119,7 @@ const Register = () => {
   };
 
   if (success) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden p-6 text-center">
-          <h2 className="text-2xl font-bold text-indigo-600 mb-4">Registration Successful!</h2>
-          <p className="text-gray-700 mb-6">Your account has been created successfully.</p>
-          <Link 
-            to="/login" 
-            className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition"
-          >
-            Go to Login
-          </Link>
-        </div>
-      </div>
-    );
+      navigate("/login")
   }
 
   return (
