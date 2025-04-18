@@ -36,6 +36,7 @@ import Library from './Pages/Schools/Deparments/Library';
 import Finance from './Pages/Schools/Deparments/Finance';
 import SchoolLogin from './components/SchoolLogin ';
 import SetSchoolPassword from './components/Setschoolpassword';
+import StudentCards from './Pages/Schools/Students/StudentCards';
 
 
 const App = () => {
@@ -69,8 +70,9 @@ const App = () => {
           <Route path="classes/ordinary" element={<Ordinarylevel />} />
           <Route path='classes/advanced' element={<AdvancedLeve/>}/>
           <Route path="reports" element={<Reports />} />
-          <Route path="studentsinfo" element={<Studentinformation />} />
+          <Route path="studentsinfo/:schoolName" element={<Studentinformation />} />
           <Route path='students/performance' element={<Studentsperformance/>}/>
+          <Route path='student/card' element={<StudentCards/>}/>
           <Route path='timetable' element={<Timetable/>}/>
 
           <Route path='department' element={<Departments/>}/>

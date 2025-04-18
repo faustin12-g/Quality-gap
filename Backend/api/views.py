@@ -1,22 +1,29 @@
 from datetime import timezone
+from urllib.parse import unquote
 from django.core.mail import EmailMessage
 from django.shortcuts import render
 from rest_framework import status
 from django.core.mail import send_mail
-from api.serializer import (UserSerializer, 
-                            
+from api.serializer import (StudentReadSerializer, StudentWriteSerializer, UserSerializer, 
                             SchoolSerializer,
                               DistrictSerializer,
+                              DisciplineRecordSerializer,
+                              StudentDisciplineHistorySerializer,
+                              LevelsSerializer,
+                              ParentsSerializer,
+                              ClassSerializer,
+                              SubjectSerializer,
+                              TeacherSerializer,
                               RequestedMembershipSerializer,
                               CustomerHelpSerializer,
-                              StudentSerializer)
+                              )
 from rest_framework import generics,permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import api_view, permission_classes
-from gap.models import User, School,District,Students,RequestedMembership,CustomerHelp,SchoolAccess
+from gap.models import Class, Levels, Parents, User, StudentDisciplinemanagement, School,District,Students,RequestedMembership,CustomerHelp,SchoolAccess
 from rest_framework import viewsets
 
 
@@ -27,7 +34,7 @@ class SchoolList(generics.ListCreateAPIView):
 
 class StudentList(generics.ListCreateAPIView):
         queryset = Students.objects.all()
-        serializer_class = StudentSerializer
+        serializer_class = StudentReadSerializer
         
        
 
@@ -448,3 +455,273 @@ def school_login(request):
         return Response({'error': 'No access found for this school'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+
+class StudentView(APIView):
+    def get(self, request, name):  # Now using 'name' in the URL
+        try:
+            school = School.objects.get(name=name)  # Querying by school name
+        except School.DoesNotExist:
+            return Response({"error": "School not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        students = Students.objects.filter(school=school)
+        serializer = StudentReadSerializer(students, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+
+class AddStudentView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, name):
+        try:
+            decoded_name = unquote(name)
+            try:
+                school = School.objects.get(name=decoded_name)
+            except School.DoesNotExist:
+                return Response({"error": f"School '{decoded_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            data = request.data.copy()
+            data['school'] = school.id
+
+            # ✅ Handle Parent
+            parent_full_name = data.get('parentName', '')
+            parent_first, parent_last = parent_full_name.strip().split(' ', 1) if ' ' in parent_full_name else (parent_full_name.strip(), '')
+
+            parent, _ = Parents.objects.get_or_create(
+                firstName=parent_first,
+                lastName=parent_last
+            )
+            data['parent'] = parent.id
+
+            # ✅ Handle Level
+            level_name = data.get('level', '').strip()
+            if not level_name:
+                return Response({"error": "Level is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            level, _ = Levels.objects.get_or_create(name=level_name, school=school)
+            data['level'] = level.id
+
+            # ✅ Handle Class
+            class_name_value = data.get('className', '').strip()
+            if not class_name_value:
+                return Response({"error": "Class name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            class_obj, _ = Class.objects.get_or_create(name=class_name_value, school=school, level=level)
+            data['class_name'] = class_obj.id
+
+            # ✅ Now validate and save student
+            serializer = StudentWriteSerializer(data=data)
+            if serializer.is_valid():
+                student = serializer.save()
+                read_serializer = StudentReadSerializer(student)
+                return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+
+class EditStudentView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, name, pk):
+        """Handle GET request to retrieve student data for editing"""
+        try:
+            decoded_name = unquote(name)
+            try:
+                school = School.objects.get(name=decoded_name)
+            except School.DoesNotExist:
+                return Response({"error": f"School '{decoded_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            try:
+                student = Students.objects.get(id=pk, school=school)
+                serializer = StudentReadSerializer(student)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Students.DoesNotExist:
+                return Response({"error": f"Student with ID {pk} not found in school '{decoded_name}'"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def patch(self, request, name, pk):
+        """Handle PATCH request to update student data"""
+        try:
+            decoded_name = unquote(name)
+            try:
+                school = School.objects.get(name=decoded_name)
+            except School.DoesNotExist:
+                return Response({"error": f"School '{decoded_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            try:
+                student = Students.objects.get(id=pk, school=school)
+            except Students.DoesNotExist:
+                return Response({"error": f"Student with ID {pk} not found in school '{decoded_name}'"}, status=status.HTTP_404_NOT_FOUND)
+            
+            data = request.data.copy()
+            data['school'] = school.id
+
+            # Handle Parent
+            parent_full_name = data.get('parentName', '')
+            if parent_full_name:  # Only update parent if provided
+                parent_first, parent_last = parent_full_name.strip().split(' ', 1) if ' ' in parent_full_name else (parent_full_name.strip(), '')
+                parent, _ = Parents.objects.get_or_create(
+                    firstName=parent_first,
+                    lastName=parent_last
+                )
+                data['parent'] = parent.id
+
+            # Handle Level
+            level_name = data.get('level', '').strip()
+            if level_name:  # Only update level if provided
+                level, _ = Levels.objects.get_or_create(name=level_name, school=school)
+                data['level'] = level.id
+
+            # Handle Class
+            class_name_value = data.get('className', '').strip()
+            if class_name_value:  # Only update class if provided
+                # Get level from data or existing student
+                level_id = data.get('level', student.level.id if student.level else None)
+                if not level_id:
+                    return Response({"error": "Level is required when updating class."}, status=status.HTTP_400_BAD_REQUEST)
+                
+                level = Levels.objects.get(id=level_id)
+                class_obj, _ = Class.objects.get_or_create(
+                    name=class_name_value, 
+                    school=school, 
+                    level=level
+                )
+                data['class_name'] = class_obj.id
+
+            # Now validate and save student
+            serializer = StudentWriteSerializer(student, data=data, partial=True)
+            if serializer.is_valid():
+                student = serializer.save()
+                read_serializer = StudentReadSerializer(student)
+                return Response(read_serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+
+
+
+
+class DeleteStudentView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, name, pk):
+        """Handle DELETE request to delete a student"""
+        try:
+            decoded_name = unquote(name)
+            try:
+                school = School.objects.get(name=decoded_name)
+            except School.DoesNotExist:
+                return Response({"error": f"School '{decoded_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            try:
+                student = Students.objects.get(id=pk, school=school)
+                student.delete()
+                return Response({"message": f"Student with ID {pk} deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+            except Students.DoesNotExist:
+                return Response({"error": f"Student with ID {pk} not found in school '{decoded_name}'"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+# views.py
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class DeductDisciplineMarksView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, name, pk):
+        try:
+            decoded_name = unquote(name)
+            school = School.objects.get(name=decoded_name)
+        except School.DoesNotExist:
+            return Response({"error": f"School '{decoded_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try: 
+            student = Students.objects.get(id=pk, school=school)
+        except Students.DoesNotExist:
+            return Response({"error": "Student not found in this school"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get or create the discipline record for the student
+        discipline_mgmt, created = StudentDisciplinemanagement.objects.get_or_create(student=student)
+
+        deduction_amount = request.data.get("deductionAmount")
+        reason = request.data.get("reason", "")
+        remarks = request.data.get("remarks", "")
+
+        if deduction_amount is None:
+            return Response({"error": "Deduction amount is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            deduction_amount = int(deduction_amount)
+            if deduction_amount < 1:
+                raise ValueError("Invalid deduction amount")
+        except ValueError:
+            return Response({"error": "Deduction amount must be a positive integer"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            discipline_mgmt.deduct_marks(
+                deduction_amount=deduction_amount,
+                reason=reason,
+                remarks=remarks,
+                recorded_by=request.user
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            "success": f"{deduction_amount} marks deducted from {student.firstName} {student.lastName}",
+            "remainingMarks": discipline_mgmt.student_descipline_marks
+        }, status=status.HTTP_200_OK)
+    
+
+
+class StudentDisciplineHistoryView(generics.ListAPIView):
+    """
+    GET /api/schools/{schoolName}/students/{pk}/discipline-history/
+    """
+    serializer_class   = DisciplineRecordSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # 1) Decode & fetch school
+        name   = unquote(self.kwargs['name'])
+        school = School.objects.get(name=name)
+
+        # 2) Fetch that student
+        student = Students.objects.get(
+            pk      = self.kwargs['pk'],
+            school  = school
+        )
+
+        # 3) Return all their DisciplineRecord via the related_name
+        return student.discipline_history.all().order_by('-date')
+
+    def list(self, request, *args, **kwargs):
+        try:
+            return super().list(request, *args, **kwargs)
+        except School.DoesNotExist:
+            return Response(
+                {"error": "School not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Students.DoesNotExist:
+            return Response(
+                {"error": "Student not found in this school"},
+                status=status.HTTP_404_NOT_FOUND
+            )

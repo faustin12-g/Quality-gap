@@ -93,10 +93,32 @@ class Parents(models.Model):
         return f"{self.firstName} {self.lastName}"
 
 
+level_choices = [
+    ('Advanced ', 'Advanced '),
+    ('Ordinary ', 'Ordinary '),
+    ]
+
+class Levels(models.Model):
+    name = models.CharField(max_length=200, choices=level_choices,default='Advanced ')
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    def __str__(self):
+        return self.name
+
+
+class Class(models.Model):
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100) 
+    level=models.ForeignKey(Levels, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.name} - {self.school.name}"
+
 class Students(models.Model):
     parent = models.ForeignKey(Parents, on_delete=models.CASCADE)
     school = models.ForeignKey(School, on_delete=models.CASCADE)
+    class_name = models.ForeignKey(Class, on_delete=models.CASCADE)
     studentNumber = models.CharField(max_length=20, unique=True, blank=True)
+    level=models.ForeignKey(Levels, on_delete=models.CASCADE,null=True,blank=True)
     firstName = models.CharField(max_length=200)
     lastName = models.CharField(max_length=200)
     dateOfBirth = models.DateField()
@@ -116,7 +138,54 @@ class Students(models.Model):
 
     def __str__(self):
         return f"{self.firstName} {self.lastName}"
-    
+
+
+
+
+
+
+
+
+class DisciplineRecord(models.Model):
+    student = models.ForeignKey(Students, on_delete=models.CASCADE, related_name='discipline_history')
+    deduction_amount = models.PositiveIntegerField()
+    reason = models.CharField(max_length=255)
+    remarks = models.TextField(blank=True, null=True)
+    date = models.DateTimeField(auto_now_add=True)
+    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    def get_recorded_by_name(self, obj):
+        user = obj.recorded_by
+        return f"{user.first_name} {user.last_name}" if user else None
+
+class StudentDisciplinemanagement(models.Model):
+            student = models.OneToOneField(Students, on_delete=models.CASCADE)
+            student_descipline_marks = models.IntegerField(default=40)
+            def deduct_marks(self, deduction_amount, reason="", remarks="", recorded_by=None):
+                if deduction_amount > self.student_descipline_marks:
+                    raise ValueError("Cannot deduct more than the current marks")
+
+                self.student_descipline_marks -= deduction_amount
+                self.save()
+
+                DisciplineRecord.objects.create(
+                    student=self.student,
+                    deduction_amount=deduction_amount,
+                    reason=reason,
+                    remarks=remarks,
+                    recorded_by=recorded_by
+                )
+
+            
+          
+class DisciplineHistory(models.Model):
+    student_discipline = models.ForeignKey(StudentDisciplinemanagement, on_delete=models.CASCADE,related_name='discipline_history')
+    reason = models.TextField()
+    points_deducted = models.IntegerField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+
+
+
 
 class RequestedMembership(models.Model):
       user=models.ForeignKey(User, on_delete=models.CASCADE)
@@ -156,13 +225,7 @@ class CustomerHelp(models.Model):
 
 
 
-class Class(models.Model):
-    school = models.ForeignKey(School, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)  # e.g., "Grade 6", "S1"
-    year = models.IntegerField()
 
-    def __str__(self):
-        return f"{self.name} - {self.school.name}"
 
 class Subject(models.Model):
     name = models.CharField(max_length=100)

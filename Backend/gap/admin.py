@@ -1,7 +1,9 @@
 from django.contrib import admin
 from .models import ( User, District, School, Parents,
                       Students,RequestedMembership,
-                      CustomerHelp,
+                      DisciplineRecord,
+                      DisciplineHistory,
+                      CustomerHelp,Levels,StudentDisciplinemanagement,
                       SchoolAccess,Class,Subject,Teacher,Lesson)
 from django.contrib.auth.hashers import make_password,check_password
 @admin.register(User)
@@ -77,9 +79,9 @@ class SchoolAccessAdmin(admin.ModelAdmin):
 
 @admin.register(Class)
 class ClassAdmin(admin.ModelAdmin):
-    list_display = ('name', 'year','school')
+    list_display = ('name', 'level','school')
     list_filter = ('school',)
-    search_fields = ('name', 'year')
+    search_fields = ('name', 'level__name')
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
     list_display = ('name', 'code')
@@ -89,5 +91,52 @@ class TeacherAdmin(admin.ModelAdmin):
     list_display = ('user', 'school')
     list_filter = ('school',)
     search_fields = ('user__email', 'user__username','school__name')
+
+
+@admin.register(Levels)
+class LevelAdmin(admin.ModelAdmin):
+    list_display = ('name','school')
+    list_filter = ('school',)
+    search_fields = ('name','school__name')
+
+
+@admin.register(Lesson)
+class LessonAdmin(admin.ModelAdmin):
+    list_display = ('school_class','subject', 'teacher', 'day','start_time', 'end_time', 'created_by')
+    list_filter = ('school_class', 'day', 'created_by')
+    search_fields = ('school_class__name','subject__name', 'teacher__user__email', 'teacher__user__username')
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by:
+            obj.created_by = request.user  # Ensure the created_by field is set to the current user
+            super().save_model(request, obj, form, change)
+
+@admin.register(StudentDisciplinemanagement)
+class StudentDisciplinemanagementAdmin(admin.ModelAdmin):
+    list_display = ('student','student_descipline_marks')
+    list_filter = ('student',)
+    search_fields = ('student__firstName','student__lastName')
+
+@admin.register(DisciplineRecord)
+class DisciplineRecordAdmin(admin.ModelAdmin):
+    list_display = ('student', 'deduction_amount','reason', 'date')
+    list_filter = ('student', 'date')
+    search_fields = ('student__firstName','student__lastName', 'deduction_amount','reason')
+    def save_model(self, request, obj, form, change):
+        if not obj.recorded_by:
+            obj.recorded_by = request.user  # Ensure the recorded_by field is set to the current user
+            super().save_model(request, obj, form, change)
+
+   
+@admin.register(DisciplineHistory)
+class DisciplineHistoryAdmin(admin.ModelAdmin):
+    list_display = ('student_discipline', 'points_deducted', 'timestamp')
+    list_filter = ('student_discipline__student', 'timestamp')
+    search_fields = ('student_discipline__student__firstName','student_discipline__student__lastName', 'points_deducted')
+    def save_model(self, request, obj, form, change):
+                super().save_model(request, obj, form, change)
+                
+
+
+
                     
 

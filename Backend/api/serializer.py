@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from gap.models import User, School,District,Students,RequestedMembership,CustomerHelp
+from gap.models import (User, School,District,Students,RequestedMembership,CustomerHelp,Levels,
+                        Parents,Class,Subject,DisciplineRecord,
+                        
+                        Teacher,Lesson,StudentDisciplinemanagement)
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,13 +38,98 @@ class DistrictSerializer(serializers.ModelSerializer):
 
 
 
-class StudentSerializer(serializers.ModelSerializer):
+class LevelsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Levels
+        fields = ['id', 'name']
+        extra_kwargs = {"id": {"read_only": True}}
+class ParentsSerializer(serializers.ModelSerializer):
+    class Meta:
+                model = Parents
+                fields = ['id', 'firstName', 'lastName']
+                extra_kwargs = {"id": {"read_only": True}}
+
+
+class ClassSerializer(serializers.ModelSerializer):
+    level=LevelsSerializer()
+    class Meta:
+        model = Class
+        fields = ['id', 'name', 'level']
+        extra_kwargs = {"id": {"read_only": True}}
+
+class SubjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subject
+        fields = ['id', 'name', 'code']
+        extra_kwargs = {"id": {"read_only": True}}
+
+class TeacherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Teacher
+        fields = ['id', 'user', 'school','subjects']
+        extra_kwargs = {"id": {"read_only": True}}
+
+
+class StudentReadSerializer(serializers.ModelSerializer):
+    level = LevelsSerializer(read_only=True)
+    parent = ParentsSerializer(read_only=True)
+    class_name = ClassSerializer(read_only=True)
+    school = SchoolSerializer(read_only=True)
+    disciplineMarks = serializers.IntegerField(
+        source='studentdisciplinemanagement.student_descipline_marks',
+        read_only=True
+    )
     class Meta:
         model = Students
-        fields = ['id', 'parent', 'firstName','studentNumber','school' ,'lastName', 'dateOfBirth', 'gender']
+        fields = ['id', 'parent', 'level', 'disciplineMarks', 'class_name',"school","studentNumber", 'firstName', 'lastName', 'dateOfBirth', 'gender']
         extra_kwargs = {"id": {"read_only": True}}
-        
 
+class StudentWriteSerializer(serializers.ModelSerializer):
+    level = serializers.PrimaryKeyRelatedField(queryset=Levels.objects.all())
+    parent = serializers.PrimaryKeyRelatedField(queryset=Parents.objects.all())
+    class_name = serializers.PrimaryKeyRelatedField(queryset=Class.objects.all())
+    school = serializers.PrimaryKeyRelatedField(queryset=School.objects.all())
+
+    class Meta:
+        model = Students
+        fields = ['id', 'parent', 'level', 'class_name', 'school', 'firstName', 'lastName', 'dateOfBirth', 'gender']
+        extra_kwargs = {
+            'id': {'read_only': True},
+            'parent': {'required': True},
+            'level': {'required': True},
+            'class_name': {'required': True},
+            'school': {'required': True}
+        }
+
+    def validate_level(self, value):
+        if not Levels.objects.filter(id=value.id).exists():
+            raise serializers.ValidationError("Selected level does not exist.")
+        return value
+
+    # Additional validation methods can be added similarly
+
+
+# serializers.py
+class DisciplineRecordSerializer(serializers.ModelSerializer):
+    recorded_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DisciplineRecord
+        fields = ['id', 'deduction_amount', 'reason', 'remarks', 'date', 'recorded_by']
+
+    def get_recorded_by(self, obj):
+        user = obj.recorded_by
+        if not user:
+            return None
+        return f"{user.first_name} {user.last_name}"
+
+
+class StudentDisciplineHistorySerializer(serializers.ModelSerializer):
+    discipline_history = DisciplineRecordSerializer(many=True, read_only=True, source='discipline_records')
+    
+    class Meta:
+        model = Students
+        fields = ['id', 'firstName', 'lastName', 'discipline_history']
 
 
 class DistrictListSerializer(serializers.ModelSerializer):

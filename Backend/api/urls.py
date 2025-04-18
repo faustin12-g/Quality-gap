@@ -5,8 +5,11 @@ from rest_framework_simplejwt.views import ( # type: ignore
     TokenRefreshView,
 )
 from .views import (Customerhelpview, SchoolListView,CreateUserView,LoginView,DistrictViewSet,CurrentUserView,
-                    CurrentUserView,GetAllRequestedMemberships,CustomerHelpReply,AllRequestedCustomerHelp,
-                    RequestedMembershipViewSet, approve_membership, delete_help_request, reject_membership,school_login,set_school_password)
+                    CurrentUserView,GetAllRequestedMemberships,CustomerHelpReply,AllRequestedCustomerHelp,StudentView,
+                    RequestedMembershipViewSet,AddStudentView, EditStudentView,DeleteStudentView,
+                    DeductDisciplineMarksView,StudentDisciplineHistoryView,
+                    
+                    approve_membership, delete_help_request, reject_membership,school_login,set_school_password)
 
 urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -29,6 +32,12 @@ path('approve-membership/', approve_membership, name='approve-membership'),
 path('reject-membership/', reject_membership, name='reject-membership'),
 path('set-school-password/', set_school_password, name='set-school-password'),
 path('school-login/', school_login, name='school-login'),
+path('schools/<str:name>/students/', StudentView.as_view(), name='school-students'),
+path('schools/<str:name>/students/add/', AddStudentView.as_view(), name='add-student'),
+path('schools/<str:name>/students/<int:pk>/edit/', EditStudentView.as_view(), name='edit-student'),
+path('schools/<str:name>/students/<int:pk>/delete/', DeleteStudentView.as_view(), name='delete-student'),
+path('schools/<str:name>/students/<int:pk>/deduct-marks/', DeductDisciplineMarksView.as_view(), name='deduct-marks'),
+path('schools/<str:name>/students/<int:pk>/deduct-history/', StudentDisciplineHistoryView.as_view(), name='deduct-history')
 
     # path('api/reject_membership/', RejectMembershipView.as_view(), name='reject_membership'),
 ]

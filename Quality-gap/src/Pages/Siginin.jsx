@@ -52,9 +52,9 @@ const SignIn = () => {
 
       // Store tokens if using JWT
        if (data.access && data.refresh) {
-        Cookies.set('access_token', data.access, { expires: 7 }); // Set cookie to expire in 7 days
-        Cookies.set('refresh_token', data.refresh, { expires: 7 });
-        Cookies.set('username', data.username, { expires: 7 });
+        Cookies.set('access_token', data.access, { expires: 100 }); // Set cookie to expire in 7 days
+        Cookies.set('refresh_token', data.refresh, { expires: 100 });
+        Cookies.set('username', data.username, { expires: 100 });
       }
 
       // Redirect to dashboard or home page
