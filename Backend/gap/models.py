@@ -271,4 +271,36 @@ class Lesson(models.Model):
 
     
             
-        
+class SchoolLibraryBookmanagement(models.Model):
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    book_name = models.CharField(max_length=200)
+    book_Quantity = models.IntegerField()
+    book_rented = models.IntegerField(default=0)  # Add this
+    
+    @property
+    def book_available(self):
+        return self.book_Quantity - self.book_rented
+    
+    def __str__(self):
+        return f"{self.school.name} Library"
+    
+# models.py
+
+class SchoolLibraryBookRental(models.Model):
+    book = models.ForeignKey(SchoolLibraryBookmanagement, on_delete=models.CASCADE, related_name="rentals")
+    student = models.ForeignKey(Students, on_delete=models.CASCADE)
+    rented_at = models.DateTimeField(auto_now_add=True)
+    returned = models.BooleanField(default=False)
+
+    @property
+    def book_rented(self):
+        return self.rentals.filter(returned=False).count()
+
+    @property
+    def book_available(self):
+        return self.book_quantity - self.book_rented
+
+    def __str__(self):
+        return f"{self.school.name} Library - {self.book_name}"
+
+    

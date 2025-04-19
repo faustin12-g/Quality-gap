@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from gap.models import (User, School,District,Students,RequestedMembership,CustomerHelp,Levels,
                         Parents,Class,Subject,DisciplineRecord,
+                        SchoolLibraryBookmanagement,
+                        SchoolLibraryBookRental,
                         
                         Teacher,Lesson,StudentDisciplinemanagement)
 
@@ -171,6 +173,45 @@ class CustomerHelpSerializer (serializers.ModelSerializer):
     class Meta:
         model=CustomerHelp
         fields='__all__'
-        extra_kwargs={"id":{"read_only":True}}       
+        extra_kwargs={"id":{"read_only":True}} 
+
+class SchoolLibraryBookmanagementSerializer(serializers.ModelSerializer):
+    book_rented = serializers.SerializerMethodField()
+    book_available = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SchoolLibraryBookmanagement
+        fields = ['id', 'book_name', 'book_Quantity', 'book_rented', 'book_available', 'school']
+        extra_kwargs = {
+            'school': {'write_only': True},  # allow it during write, not shown in GET
+        }
+
+    def get_book_rented(self, obj):
+        return obj.rentals.filter(returned=False).count()
+
+    def get_book_available(self, obj):
+        return obj.book_Quantity - obj.rentals.filter(returned=False).count()
+
+
+# serializers.py
+class RentalHistorySerializer(serializers.ModelSerializer):
+    book = serializers.SerializerMethodField()
+    student = serializers.SerializerMethodField()
+    student = StudentReadSerializer(read_only=True) 
+    class Meta:
+        model = SchoolLibraryBookRental
+        fields = ['id', 'book', 'student', 'rented_at', 'returned', 'returned']
+
+    def get_book(self, obj):
+        return {
+            'book_name': obj.book.book_name
+        }
+
+    def get_student(self, obj):
+        return {
+            'firstName': obj.student.firstName,
+            'lastName': obj.student.lastName
+        }
+
 
 

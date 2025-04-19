@@ -3,6 +3,8 @@ from .models import ( User, District, School, Parents,
                       Students,RequestedMembership,
                       DisciplineRecord,
                       DisciplineHistory,
+                      SchoolLibraryBookRental,
+                      SchoolLibraryBookmanagement,
                       CustomerHelp,Levels,StudentDisciplinemanagement,
                       SchoolAccess,Class,Subject,Teacher,Lesson)
 from django.contrib.auth.hashers import make_password,check_password
@@ -137,6 +139,23 @@ class DisciplineHistoryAdmin(admin.ModelAdmin):
                 
 
 
+@admin.register(SchoolLibraryBookmanagement)
+class SchoolLibraryBookmanagementAdmin(admin.ModelAdmin):
+    list_display = ('school', 'book_name', 'book_Quantity')
+    list_filter = ('school',)
+    search_fields = ('school__name', 'book_name')
 
-                    
+
+@admin.register(SchoolLibraryBookRental)
+class SchoolLibraryBookRentalAdmin(admin.ModelAdmin):
+    list_display = ('book','student','rented_at','returned')
+    list_filter = ('book__school', 'book__book_name','returned')
+    search_fields = ('book__school__name', 'book__book_name','student__firstName','student__lastName')
+    def save_model(self, request, obj, form, change):
+        if not obj.returned:
+            obj.returned = False  # Ensure the returned field is set to False by default
+            super().save_model(request, obj, form, change)
+        else:
+                super().save_model(request, obj, form, change)
+
 

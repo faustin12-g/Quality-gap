@@ -37,6 +37,7 @@ import Finance from './Pages/Schools/Deparments/Finance';
 import SchoolLogin from './components/SchoolLogin ';
 import SetSchoolPassword from './components/Setschoolpassword';
 import StudentCards from './Pages/Schools/Students/StudentCards';
+import AddBook from './Pages/Schools/Deparments/AddBook';
 
 
 const App = () => {
@@ -80,6 +81,7 @@ const App = () => {
           <Route path='department/dos' element={<DirectorOfstudie/>}/>
           <Route path='department/dod' element={<DirectOfDescripline/>}/>
           <Route path='department/library' element={<Library/>}/>
+          <Route path='department/library/add-book' element={<AddBook/>}/>
           <Route path='department/finance' element={<Finance/>}/>
           {/* If needed, you can add more nested routes here */}
         </Route>

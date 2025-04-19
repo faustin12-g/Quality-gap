@@ -1,4 +1,4 @@
-from datetime import timezone
+from django.utils import timezone
 from urllib.parse import unquote
 from django.core.mail import EmailMessage
 from django.shortcuts import render
@@ -10,7 +10,9 @@ from api.serializer import (StudentReadSerializer, StudentWriteSerializer, UserS
                               DisciplineRecordSerializer,
                               StudentDisciplineHistorySerializer,
                               LevelsSerializer,
+                              RentalHistorySerializer,
                               ParentsSerializer,
+                              SchoolLibraryBookmanagementSerializer,
                               ClassSerializer,
                               SubjectSerializer,
                               TeacherSerializer,
@@ -23,7 +25,10 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import api_view, permission_classes
-from gap.models import Class, Levels, Parents, User, StudentDisciplinemanagement, School,District,Students,RequestedMembership,CustomerHelp,SchoolAccess
+from gap.models import (Class, Levels, Parents, User, StudentDisciplinemanagement,
+                         School,District,Students,SchoolLibraryBookmanagement,
+                         SchoolLibraryBookRental,
+                         RequestedMembership,CustomerHelp,SchoolAccess)
 from rest_framework import viewsets
 
 
@@ -725,3 +730,237 @@ class StudentDisciplineHistoryView(generics.ListAPIView):
                 {"error": "Student not found in this school"},
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+
+
+
+
+
+
+
+class SchoolLibraryBookView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, name):
+        try:
+            decoded_name = unquote(name)
+            school = School.objects.get(name=decoded_name)
+        except School.DoesNotExist:
+            return Response({"error": f"School '{decoded_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        books = SchoolLibraryBookmanagement.objects.filter(school=school)
+        serializer = SchoolLibraryBookmanagementSerializer(books, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request, name):
+        try:
+            decoded_name = unquote(name)
+            school = School.objects.get(name=decoded_name)
+        except School.DoesNotExist:
+            return Response({"error": f"School '{decoded_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['school'] = school.id
+
+        serializer = SchoolLibraryBookmanagementSerializer(data=data)
+        if serializer.is_valid():
+            book = serializer.save()
+            read_serializer = SchoolLibraryBookmanagement(book)
+            return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class RentBookView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, school_name, book_id):
+        student_id = request.data.get('student_id')
+
+        try:
+            book = SchoolLibraryBookmanagement.objects.get(id=book_id)
+            student = Students.objects.get(id=student_id)
+            if book.school.name != school_name:
+                return Response({"error": "Invalid school name."}, status=status.HTTP_400_BAD_REQUEST)
+        except (SchoolLibraryBookmanagement.DoesNotExist, Students.DoesNotExist):
+            return Response({"error": "Book or student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # ✅ Check if student already rented this book and hasn’t returned it
+        existing_rental = SchoolLibraryBookRental.objects.filter(book=book, student=student, returned=False).first()
+        if existing_rental:
+            return Response({
+                "error": "This student has already rented this book and hasn't returned it yet. Please return it first."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ Check for book availability
+        rented_count = book.rentals.filter(returned=False).count()
+        if book.book_Quantity <= rented_count:
+            return Response({"error": "No available copies."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ Create rental
+        rental = SchoolLibraryBookRental.objects.create(book=book, student=student)
+
+        # Optional: update book's rental count
+        book.book_rented += 1
+        book.save()
+
+        book_data = SchoolLibraryBookmanagementSerializer(book).data
+
+        return Response({
+            "message": "Book rented successfully.",
+            "rental_details": rental.id,
+            "book": book_data
+        }, status=status.HTTP_201_CREATED)
+
+
+
+
+
+
+from django.utils import timezone
+
+
+class ReturnBookView(APIView):
+    def post(self, request, school_name, book_id):
+        student_id = request.data.get("student_id")
+
+        if not student_id:
+            return Response({"error": "Student ID is required."}, status=400)
+
+        try:
+            school = School.objects.get(name=school_name)
+            student = Students.objects.get(id=student_id, school=school)
+            book = SchoolLibraryBookmanagement.objects.get(id=book_id, school=school)
+        except (School.DoesNotExist, Students.DoesNotExist, SchoolLibraryBookmanagement.DoesNotExist):
+            return Response({"error": "Invalid school, student, or book."}, status=404)
+
+        try:
+            rental = SchoolLibraryBookRental.objects.get(book=book, student=student, returned=False)
+        except SchoolLibraryBookRental.DoesNotExist:
+            return Response({"error": "This student did not rent this book or has already returned it."}, status=404)
+
+        rental.returned = True
+        rental.returned_on = timezone.now()
+        rental.save()
+
+        # Update the book's rented count
+        book.book_rented = max(0, book.book_rented - 1)
+        book.save()
+
+        # Now fetch all students who have rented the book and return their information
+        renters = SchoolLibraryBookRental.objects.filter(book=book, returned=False)
+        rented_students = [rental.student for rental in renters]  # Get all student objects who rented the book
+
+        # Serialize the student data
+        student_serializer = StudentReadSerializer(rented_students, many=True)
+
+        return Response({
+            "message": "Book returned successfully.",
+            "students_who_rented": student_serializer.data  # Return the list of students who rented the book
+        })
+
+
+from rest_framework.exceptions import NotFound
+class BookRentersview(APIView):
+    def get(self, request, school_name, book_id):
+        try:
+            school = School.objects.get(name=school_name)
+        except School.DoesNotExist:
+            raise NotFound(f"School '{school_name}' not found.")
+        
+        try:
+            book = SchoolLibraryBookmanagement.objects.get(id=book_id, school=school)
+        except SchoolLibraryBookmanagement.DoesNotExist:
+            raise NotFound(f"Book with ID '{book_id}' not found for school '{school_name}'.")
+        
+        rentals = book.rentals.all()
+        serializer =RentalHistorySerializer (rentals, many=True)
+        return Response(serializer.data)
+            
+
+
+
+
+        
+        
+    
+
+
+
+class RentalHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, school_name):
+        rentals = SchoolLibraryBookRental.objects.filter(
+            book__school__name=school_name
+        ).select_related('book', 'student')
+
+        serializer = RentalHistorySerializer(rentals, many=True)
+        return Response(serializer.data)
+    
+
+
+class AddSchoollibraryBookview(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, name):
+        try:
+            decoded_name = unquote(name)
+            school = School.objects.get(name=decoded_name)
+            
+            data = request.data.copy()
+            data['school'] = school.id  # inject school id
+
+            serializer = SchoolLibraryBookmanagementSerializer(data=data)
+            if serializer.is_valid():
+                book = serializer.save(school=school)
+                read_serializer = SchoolLibraryBookmanagementSerializer(book)
+                return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except School.DoesNotExist:
+            return Response({"error": f"School '{decoded_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+
+
+
+
+
+
+
+
+class DeleteLibraryBook(APIView):
+    permission_classes = [IsAuthenticated]
+    def delete(self, request, name, pk):
+        try:
+            decoded_name = unquote(name)
+            school=School.objects.get(name=decoded_name)
+            book = SchoolLibraryBookmanagement.objects.get(id=pk, school=school)
+            book.delete()
+            return Response({"message": f"Book with ID {pk} deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except School.DoesNotExist:
+            return Response({"error": f"School '{decoded_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+        except SchoolLibraryBookmanagement.DoesNotExist:
+            return Response({"error": f"Book with ID {pk} not found in school '{decoded_name}'"}, status=status.HTTP_404_NOT_FOUND)
+        
+
+
+
+
+        
+
+
+

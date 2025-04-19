@@ -1,5 +1,6 @@
 
 from django.urls import path
+# from django.urls import re_path
 from rest_framework_simplejwt.views import ( # type: ignore
     TokenObtainPairView,
     TokenRefreshView,
@@ -8,6 +9,11 @@ from .views import (Customerhelpview, SchoolListView,CreateUserView,LoginView,Di
                     CurrentUserView,GetAllRequestedMemberships,CustomerHelpReply,AllRequestedCustomerHelp,StudentView,
                     RequestedMembershipViewSet,AddStudentView, EditStudentView,DeleteStudentView,
                     DeductDisciplineMarksView,StudentDisciplineHistoryView,
+                    SchoolLibraryBookView,RentBookView,ReturnBookView,
+                    RentalHistoryView,
+                    AddSchoollibraryBookview,
+                    DeleteLibraryBook,
+                    BookRentersview,
                     
                     approve_membership, delete_help_request, reject_membership,school_login,set_school_password)
 
@@ -37,7 +43,14 @@ path('schools/<str:name>/students/add/', AddStudentView.as_view(), name='add-stu
 path('schools/<str:name>/students/<int:pk>/edit/', EditStudentView.as_view(), name='edit-student'),
 path('schools/<str:name>/students/<int:pk>/delete/', DeleteStudentView.as_view(), name='delete-student'),
 path('schools/<str:name>/students/<int:pk>/deduct-marks/', DeductDisciplineMarksView.as_view(), name='deduct-marks'),
-path('schools/<str:name>/students/<int:pk>/deduct-history/', StudentDisciplineHistoryView.as_view(), name='deduct-history')
+path('schools/<str:name>/students/<int:pk>/deduct-history/', StudentDisciplineHistoryView.as_view(), name='deduct-history'),
+path('schools/<str:name>/library/', SchoolLibraryBookView.as_view(), name='school-library'),
+path('schools/<str:school_name>/library/<int:book_id>/rent/', RentBookView.as_view(), name='rent-book'),
+path('schools/<str:school_name>/library/<int:book_id>/return/', ReturnBookView.as_view(), name='return-book'),
+path('schools/<str:school_name>/library/rental-history/', RentalHistoryView.as_view(), name='rental-history'),
+path('schools/<str:name>/library/add-book/', AddSchoollibraryBookview.as_view(), name='add-school-library-book'),
+path('schools/<str:name>/library/<int:pk>/delete/',DeleteLibraryBook.as_view(),name='delete-school-library-book'),
+path('schools/<str:school_name>/library/<int:book_id>/renters/', BookRentersview.as_view(), name='book-renters'),
 
     # path('api/reject_membership/', RejectMembershipView.as_view(), name='reject_membership'),
 ]
